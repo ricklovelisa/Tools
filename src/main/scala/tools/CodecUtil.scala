@@ -5,7 +5,7 @@ import com.ibm.icu.text.CharsetDetector
 /**
   * Created by QQ on 2016/5/31.
   */
-object odecUtil {
+object CodecUtil {
 
 //  def decodeUrlCode(
   /**
