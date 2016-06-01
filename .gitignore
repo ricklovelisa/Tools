@@ -3,4 +3,5 @@
 */**/*.iml
 */**/*.xml
 /target
+*/**/target
 */**/out
