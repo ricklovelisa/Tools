@@ -13,3 +13,5 @@ libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.5.2"
 libraryDependencies += "mysql" % "mysql-connector-java" % "5.1.38"
 
 libraryDependencies += "org.json" % "json" % "20160212"
+
+libraryDependencies += "com.ibm.icu" % "icu4j" % "56.1"
