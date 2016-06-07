@@ -16,9 +16,9 @@ import scala.collection.mutable.ArrayBuffer
 /**
   * Created by QQ on 2016/5/31.
   */
-object dataCleaning {
+object DataCleaning {
 
-  def change8To16(code: String): String = {
+  private def change8To16(code: String): String = {
 
     val url = code.split("%u")
     val arr = ArrayBuffer[String]()
@@ -40,6 +40,24 @@ object dataCleaning {
     processedUrl
   }
 
+  def urlcodeProcess(str: String): String = {
+
+    val findUtf8 = Pattern.compile("%([0-9a-fA-F]){2}").matcher(str).find
+    val findUnicode = Pattern.compile("%u([0-9a-fA-F]){4}").matcher(str).find
+
+    if (findUtf8 && !findUnicode)
+      urlcodeProcess(URLDecoder.decode(str, "UTF-8"))
+    else if (findUnicode && !findUtf8)
+      urlcodeProcess(URLDecoder.decode(change8To16(str), "UTF-16"))
+    else if (findUnicode && findUtf8 && (str.contains("%20") || str.contains("%25")))
+      urlcodeProcess(str.replaceAll("%20", " ").replaceAll("%25", "%"))
+    else if (findUnicode && findUtf8 && !(str.contains("%20") || str.contains("%25")))
+      urlcodeProcess(URLDecoder.decode(change8To16(str.replaceAll("%([0-9a-fA-F]){2}", "")), "UTF-16"))
+    else
+      str
+
+  }
+
   def main(args: Array[String]) {
 
     val conf = new SparkConf()
@@ -50,37 +68,18 @@ object dataCleaning {
     val kunyanConf = new KunyanConf
     kunyanConf.set("222.73.57.17", 16003)
 
-    val patternUTF8 = Pattern.compile("%([0-9a-fA-F]){2}")
-    val patternUnicode = Pattern.compile("%u([0-9a-fA-F]){4}")
-//    sc.textFile("D:/14").coalesce(4).foreach(line => {
-//      val temp = line.split("\t")
-////      val wordsTemp = temp(7).replaceAll("25", "")
-//      if (patternUnicode.matcher())
-//      while () {
-//
-//      }
-//      println(temp(1), wordsTemp)
-//      if (patternUTF8.matcher(wordsTemp).find)
-//        (temp(1), URLDecoder.decode(wordsTemp, "UTF-8"))
-//      else if (patternUnicode.matcher(wordsTemp).find)
-//        (temp(1), URLDecoder.decode(change8To16(wordsTemp), "UTF-16"))
-//      else
-//      (temp(1), wordsTemp)
-//
-//    })
+
+    val data = sc.textFile("D:/2").coalesce(4).map(line => {
+      val temp = line.split("\t")
+      val result = urlcodeProcess(temp(7))
+      (temp(1), result)
+    })
+
+    data.foreach(println)
+    println(data.count())
 
 
-    val k = "fadfa%25u6587%25u6021%25u82B1%25u56ED%2520%25u4E09%25u5C45"
-    println(k.substring(5,8))
-    var i = 1
-    val xx = patternUTF8.matcher(k)
-    while (xx.find()) {
-      println(xx.start())
-      println(xx.end())
-      println(xx.group())
-      println()
-      val result = URLDecoder.decode(xx.group(), "UTF-8")
-    }
+
 
   }
 }
