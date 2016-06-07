@@ -18,9 +18,14 @@ import scala.collection.mutable.ArrayBuffer
   */
 object DataCleaning {
 
-  private def change8To16(code: String): String = {
+  /**
+    *
+    * @param code
+    * @return
+    */
+  def change8To16(code: String): String = {
 
-    val url = code.split("%u")
+    val url = code.split("%")
     val arr = ArrayBuffer[String]()
 
     if (!url(0).isEmpty) {
@@ -28,31 +33,35 @@ object DataCleaning {
     }
     for (i <- 1 until url.length) {
 
-      if (!url(i).isEmpty && url(i).length == 4) {
-        arr += ("%" + url(i).substring(0, 2))
-        arr += ("%" + url(i).substring(2))
+      if (!url(i).isEmpty && url(i).length == 5) {
+        arr += ("%" + url(i).substring(1, 3))
+        arr += ("%" + url(i).substring(3))
+      } else if (!url(i).isEmpty && url(i).length == 2) {
+        val tmp = URLDecoder.decode("%" + url(i), "UTF-8")
+        arr += tmp
       }
 
     }
 
-    val processedUrl = arr.mkString("")
-
-    processedUrl
+    arr.mkString("")
   }
 
+  /**
+    *
+    * @param str
+    * @return
+    */
   def urlcodeProcess(str: String): String = {
 
     val findUtf8 = Pattern.compile("%([0-9a-fA-F]){2}").matcher(str).find
     val findUnicode = Pattern.compile("%u([0-9a-fA-F]){4}").matcher(str).find
 
-    if (findUtf8 && !findUnicode)
+    if (findUtf8 && !findUnicode) {
       urlcodeProcess(URLDecoder.decode(str, "UTF-8"))
-    else if (findUnicode && !findUtf8)
+    }
+    else if (findUnicode) {
       urlcodeProcess(URLDecoder.decode(change8To16(str), "UTF-16"))
-    else if (findUnicode && findUtf8 && (str.contains("%20") || str.contains("%25")))
-      urlcodeProcess(str.replaceAll("%20", " ").replaceAll("%25", "%"))
-    else if (findUnicode && findUtf8 && !(str.contains("%20") || str.contains("%25")))
-      urlcodeProcess(URLDecoder.decode(change8To16(str.replaceAll("%([0-9a-fA-F]){2}", "")), "UTF-16"))
+    }
     else
       str
 
@@ -65,14 +74,18 @@ object DataCleaning {
       .setMaster("local")
     val sc = new SparkContext(conf)
 
+    val config = new JsonConfig
+    config.initConfig("D:/config.json")
     val kunyanConf = new KunyanConf
     kunyanConf.set("222.73.57.17", 16003)
 
-
+    val elemList = config.getValue("dataCleaning", "elemList").split("\t").map(line => {
+      (line.split(",")(0), line.split(",")(1))
+    }).toMap
     val data = sc.textFile("D:/2").coalesce(4).map(line => {
       val temp = line.split("\t")
-      val result = urlcodeProcess(temp(7))
-      (temp(1), result)
+//      val result = urlcodeProcess(temp(7), elemList)
+//      (temp(1), result)
     })
 
     data.foreach(println)
