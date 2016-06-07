@@ -1,16 +1,9 @@
 package tools
 
-import java.io.{File, FileInputStream, ObjectInputStream, Serializable}
-
 import org.apache.spark.{SparkConf, SparkContext}
 import java.net.{URLDecoder, URLEncoder}
 import java.util.regex.Pattern
-
-import com.kunyandata.nlpsuit.classification.Bayes
-import com.kunyandata.nlpsuit.sentiment.PredictWithNb
 import com.kunyandata.nlpsuit.util.{KunyanConf, TextPreprocessing}
-
-import scala.collection.Map
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -19,13 +12,13 @@ import scala.collection.mutable.ArrayBuffer
 object DataCleaning {
 
   /**
-    *
-    * @param code
-    * @return
+    * 将包含unicode编码的urlcode用utf16的方式格式化
+    * @param str urlcode
+    * @return 返回一个utf16的urlcode
     */
-  def change8To16(code: String): String = {
+  def change8To16(str: String): String = {
 
-    val url = code.split("%")
+    val url = str.split("%")
     val arr = ArrayBuffer[String]()
 
     if (!url(0).isEmpty) {
@@ -47,9 +40,9 @@ object DataCleaning {
   }
 
   /**
-    *
-    * @param str
-    * @return
+    * urlcode解码方法
+    * @param str urlcode字符串
+    * @return 解码后的中文字符串
     */
   def urlcodeProcess(str: String): String = {
 

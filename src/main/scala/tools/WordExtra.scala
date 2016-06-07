@@ -28,7 +28,7 @@ object WordExtra {
     val wordsTimes = sourceFile.flatMap ( (line : String ) => splitWord(line, wordLength)).map( ( word : String ) => (word ,1)).reduceByKey(_ + _ ).filter(_._2 > wordsFilter)
     val candidateWords = wordsTimes.filter( line => filterFunc( line._1.length , wordLength))          //  生成待查词列表 2-5 step1
     val wordsTimesReverse = wordsTimes.map{ case (key ,value) => ( key.reverse , value)}              //逆序词典1-6
-    val disDictionary = wordsTimes.collect()               // 一个 Array[String , Int]
+    val disDictionary = wordsTimes.collect() // 一个 Array[String , Int]
     Sorting.quickSort(disDictionary)(Ordering.by[(String, Int), String](_._1)) //对字典进行排序
     val broadforwardDic = sc.broadcast(disDictionary)                                                  // 广播正序字典
     val consolidateRDD = candidateWords.map( line => countDoc ( line ,textLength,broadforwardDic.value)) // 计算凝结度 step2 ( String , (Int ,Double))
@@ -72,11 +72,11 @@ object WordExtra {
   }
 
   def countDof(wordLine: (String , Int) , dictionary : Array[(String ,Int)]) : (String , Double) = {
-    val word = wordLine._1
-    val Len = word.length
-    var total = 0
-    var dof = mutable.ArrayBuffer[Int]()
-    var pos = BinarySearch(word, dictionary, 0, dictionary.length)._1
+    val word = wordLine._1 // 需要计算信息熵的词
+    val Len = word.length  // 词的长度
+    var total = 0          // 总共
+    var dof = mutable.ArrayBuffer[Int]() // dof
+    var pos = BinarySearch(word, dictionary, 0, dictionary.length)._1 //
     val dictionaryLen = dictionary.length
     while( pos < dictionaryLen && dictionary(pos)._1.startsWith(word)) {
       val tmp = dictionary(pos)._1
