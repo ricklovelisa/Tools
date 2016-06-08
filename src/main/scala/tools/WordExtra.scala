@@ -10,16 +10,20 @@ import scala.collection.mutable
   */
 object WordExtra {
   def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("digwords.version 2.0")
+    val conf = new SparkConf()
+      .setAppName("digwords.version 2.0")
+      .setMaster("local")
+      .set("spark.driver.host","192.168.2.90")
+
     val sc = new SparkContext(conf)
     // 获取参数
     val originalFile = sc.textFile(args(0) , 5).flatMap( line   => splitsentence( line ) )     // 按标点分句
-    val frequencyThreshold : Int = args(2).toInt   // 最小词频门限值
-    val consolidateThreshold : Double = args(3).toDouble
-    val freedomThreshold : Double = args(4).toDouble
-    val wordLength : Int= args(5).toInt   // 给定最长词长度
-    val wordsFilter : Int= args(6).toInt
-    val numPartiton : Int = args(7).toInt
+    val frequencyThreshold = 0
+    val consolidateThreshold = 0.0
+    val freedomThreshold = 0.0
+    val wordLength = 6
+    val wordsFilter = 0
+//    val numPartiton : Int = args(7).toInt
     val sourceFile = originalFile.map( line => washLines( line))                        // 洗数据
     val textLength = sourceFile.map(line => line.length).reduce( (a, b) => a + b)       // 计算总文本长度
 
@@ -41,7 +45,8 @@ object WordExtra {
     val freedomRDD = freedomRDD_temp.map( { case( key , (value1 , value2)) => ( key , math.min( value1 , value2))})
     val resultRDD = consolidateRDD.join(freedomRDD)
     val finalRDD = resultRDD.filter{ line : (String, ((Int, Double), Double)) => caculation( line._2._1._1 , line._2._1._2 ,line._2._2 ,frequencyThreshold ,consolidateThreshold ,freedomThreshold  )}// 词频 ， 凝结度， 自由商
-    finalRDD.saveAsTextFile(args(1))
+    finalRDD.sortByKey().foreach(println)
+    println(textLength)
   }
 
   def countDoc(word: (String , Int), TextLen: Int ,  dictionary : Array[(String ,Int)]): (String , (Int ,Double)) = {

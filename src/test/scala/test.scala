@@ -14,8 +14,8 @@ object test {
   def main(args: Array[String]) {
 
 
-    val k = "你好吗"
-    println(k.startsWith("你"))
+    val k = "上海上海坤验数据服务有限公司"
+    println(WordExtractor.splitWordsWithWindow(k, 6).toSeq)
 
   }
 }
