@@ -3,6 +3,7 @@ package tools
 import org.apache.spark.SparkContext
 
 import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
 
 /**
   * Created by QQ on 2016/6/4.
@@ -11,6 +12,7 @@ object WordExtractor {
 
   /**
     * 清洗数据，只保留中文字符、大小写英文字符和数字
+    *
     * @param content 文本
     * @return 返回清洗过的字符串
     */
@@ -25,6 +27,7 @@ object WordExtractor {
 
   /**
     * 分解句子
+    *
     * @param content 文本
     * @return 返回一个字符串数组
     */
@@ -38,6 +41,7 @@ object WordExtractor {
 
   /**
     * 根据窗口大小切分词组（N-gram）
+    *
     * @param content 文本
     * @param window 词窗口大小
     * @return 返回一个词数组
@@ -61,6 +65,7 @@ object WordExtractor {
 
   /**
     * 计算词汇的凝结度
+    *
     * @param word 需要计算凝结度的词
     * @param textLength 文本总长度
     * @param dictionary wordcount词典
@@ -88,6 +93,7 @@ object WordExtractor {
 
   /**
     * 计算词的右字信息熵
+    *
     * @param word word
     * @param textLength 文本总长度
     * @param dictionary 字典长度
@@ -123,6 +129,7 @@ object WordExtractor {
 
   /**
     * 筛选出需要计算的词，长度为（2-6）
+    *
     * @param par word & count
     * @param threshold 阈值
     * @return 返回布尔值
@@ -134,6 +141,7 @@ object WordExtractor {
 
   /**
     * 执行函数
+    *
     * @param sc spark程序入口
     * @param config 配置文件
     * @return 返回值为空
@@ -151,7 +159,7 @@ object WordExtractor {
 
     // 分割句子
     val data = sc.textFile(path)
-      .map(splitSents(_))
+      .map(splitSents)
       .flatMap(_.array)
       .repartition(parallelism)
       .map(washLines)
@@ -170,44 +178,35 @@ object WordExtractor {
       .flatMap(splitWordsWithWindow(_, wordWindow.value)).map((_, 1))
       .reduceByKey(_ + _).filter(_._2 > 1).cache()
 
-    // ______________________ test __________________________
+    // 获取广播词表
     val dictionary = wordsCount.collect().toMap
     val dictBr = sc.broadcast(dictionary)
 
-    val wordsCounts = wordsCount.filter(_._1.contains("颗骰子的"))
-    wordsCounts.filter(_._1.length == 5).foreach(println)
-    val wordRDD = wordsCounts.filter(filterFunc(_, wordWindow.value)).cache()
+    // 获得所有词的RDD （词的长度在2-6之间）
+    val wordRDD = wordsCount.filter(filterFunc(_, wordWindow.value)).cache()
+
+    // 获取待计算凝结度的词RDD
     val coagulationRDD = wordRDD.map(wordPair => {
       val word = wordPair._1
       val wordCoagulation = coagulation(word, totalLengthBr.value, dictBr.value)
       (word, wordCoagulation)
+    }).filter(_._1.length != wordWindow.value)
+
+
+    // 计算左右字信息熵
+    val infoEntropyRDD = wordRDD.filter(_._1.length > 1)
+      .map(wordPair => {
+      val word = wordPair._1
+      val result = infoEntropy(word, totalLengthBr.value, dictBr.value)
+      result
+    }).flatMap(_.array).groupByKey().filter(_._1.length > 1).map(line => {
+      val right = line._2.filter(_._1 == "rightInfoEntropy").map(_._2).sum
+      val left = line._2.filter(_._1 == "leftInfoEntropy").map(_._2).sum
+      (line._1, Math.min(right, left))
     })
 
-    //_________________________________________________________
-
-//    // 获取广播词表
-//    val dictionary = wordsCount.collect().toMap
-//    val dictBr = sc.broadcast(dictionary)
-//
-//    // 获得所有词的RDD （词的长度在2-6之间）
-//    val wordRDD = wordsCount.filter(filterFunc(_, wordWindow.value)).cache()
-//
-//    // 获取待计算凝结度的词RDD
-//    val coagulationRDD = wordRDD.map(wordPair => {
-//      val word = wordPair._1
-//      val wordCoagulation = coagulation(word, totalLengthBr.value, dictBr.value)
-//      (word, wordCoagulation)
-//    }).filter(_._1.length != wordWindow.value)
-//
-//
-//    // 计算左右字信息熵
-//    val infoEntropyRDD = wordRDD.filter(_._1.length > 1)
-//      .map(wordPair => {
-//      val word = wordPair._1
-//      val result = infoEntropy(word, totalLengthBr.value, dictBr.value)
-//      result
-//    }).flatMap(_.array).groupByKey().filter(_._1.length > 1)
-
+    coagulationRDD.collect()
+    infoEntropyRDD.collect()
   }
 
 }
