@@ -107,14 +107,16 @@ object WordExtractor {
 
       if (leftWord.length == 1) {
         val pLeftWord = dictionary(leftWord) / textLength.toDouble
-        lInfoEntro.append((rightWord, pLeftWord))
-      } else if (rightWord.length == 1) {
+        val entropy = 0 - pLeftWord * Math.log(pLeftWord)
+        lInfoEntro.append((rightWord, entropy))
+      }
+      if (rightWord.length == 1) {
         val pRigthWord = dictionary(rightWord) / textLength.toDouble
-        rInfoEntro.append((leftWord, pRigthWord))
+        val entropy = 0 - pRigthWord * Math.log(pRigthWord)
+        rInfoEntro.append((leftWord, entropy))
       }
     }
 
-    println(lInfoEntro, rInfoEntro)
     Array((rInfoEntro(0)._1, ("rightInfoEntropy", rInfoEntro(0)._2)),
           (lInfoEntro(0)._1, ("leftInfoEntropy", rInfoEntro(0)._2)))
   }
@@ -168,30 +170,43 @@ object WordExtractor {
       .flatMap(splitWordsWithWindow(_, wordWindow.value)).map((_, 1))
       .reduceByKey(_ + _).filter(_._2 > 1).cache()
 
-    // 获取广播词表
+    // ______________________ test __________________________
     val dictionary = wordsCount.collect().toMap
     val dictBr = sc.broadcast(dictionary)
 
-    // 获得所有词的RDD （词的长度在2-6之间）
-    val wordRDD = wordsCount.filter(filterFunc(_, wordWindow.value)).cache()
-
-    // 获取待计算凝结度的词RDD
+    val wordsCounts = wordsCount.filter(_._1.contains("颗骰子的"))
+    wordsCounts.filter(_._1.length == 5).foreach(println)
+    val wordRDD = wordsCounts.filter(filterFunc(_, wordWindow.value)).cache()
     val coagulationRDD = wordRDD.map(wordPair => {
       val word = wordPair._1
       val wordCoagulation = coagulation(word, totalLengthBr.value, dictBr.value)
       (word, wordCoagulation)
-    }).filter(_._1.length != 6)
+    })
 
+    //_________________________________________________________
 
-    // 计算左右字信息熵
-    val infoEntropyRDD = wordRDD.filter(_._1.length > 1).map(wordPair => {
-      val word = wordPair._1
-      val result = infoEntropy(word, totalLengthBr.value, dictBr.value)
-      result
-    }).flatMap(_.array).groupByKey().filter(_._1 != 1)
-
-    println(infoEntropyRDD.count)
-    println(coagulationRDD.count)
+//    // 获取广播词表
+//    val dictionary = wordsCount.collect().toMap
+//    val dictBr = sc.broadcast(dictionary)
+//
+//    // 获得所有词的RDD （词的长度在2-6之间）
+//    val wordRDD = wordsCount.filter(filterFunc(_, wordWindow.value)).cache()
+//
+//    // 获取待计算凝结度的词RDD
+//    val coagulationRDD = wordRDD.map(wordPair => {
+//      val word = wordPair._1
+//      val wordCoagulation = coagulation(word, totalLengthBr.value, dictBr.value)
+//      (word, wordCoagulation)
+//    }).filter(_._1.length != wordWindow.value)
+//
+//
+//    // 计算左右字信息熵
+//    val infoEntropyRDD = wordRDD.filter(_._1.length > 1)
+//      .map(wordPair => {
+//      val word = wordPair._1
+//      val result = infoEntropy(word, totalLengthBr.value, dictBr.value)
+//      result
+//    }).flatMap(_.array).groupByKey().filter(_._1.length > 1)
 
   }
 
