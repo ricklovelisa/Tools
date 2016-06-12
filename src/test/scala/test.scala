@@ -14,8 +14,5 @@ object test {
   def main(args: Array[String]) {
 
 
-    val k = "上海上海坤验数据服务有限公司"
-    println(WordExtractor.splitWordsWithWindow(k, 6).toSeq)
-
   }
 }

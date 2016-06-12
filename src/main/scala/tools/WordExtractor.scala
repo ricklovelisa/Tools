@@ -1,5 +1,7 @@
 package tools
 
+import java.io.{File, PrintWriter}
+
 import org.apache.spark.SparkContext
 
 import scala.collection.mutable.ArrayBuffer
@@ -31,7 +33,7 @@ object WordExtractor {
     * @param content 文本
     * @return 返回一个字符串数组
     */
-  def splitSents(content: String): Array[String] = {
+  private def splitSents(content: String): Array[String] = {
 
     if (content != null && !content.isEmpty)
       content.split("[,.?;:\'\"，。？；：‘“、!！]").filterNot(_.length == 0)
@@ -46,7 +48,7 @@ object WordExtractor {
     * @param window 词窗口大小
     * @return 返回一个词数组
     */
-  def splitWordsWithWindow(content: String, window: Int): Array[String] = {
+  private def splitWordsWithWindow(content: String, window: Int): Array[String] = {
 
     val result = ArrayBuffer[String]()
 
@@ -163,6 +165,7 @@ object WordExtractor {
       .flatMap(_.array)
       .repartition(parallelism)
       .map(washLines)
+      .filter(_.length != 0)
 
     // 计算文本总长度
     val totalLengthBr = sc.broadcast(data.map(_.length).reduce(_ + _))
@@ -176,7 +179,7 @@ object WordExtractor {
     // 计算词频(过滤掉词频过小的词片段)
     val wordsCount = data
       .flatMap(splitWordsWithWindow(_, wordWindow.value)).map((_, 1))
-      .reduceByKey(_ + _).filter(_._2 > 1).cache()
+      .reduceByKey(_ + _).filter(_._2 > minWordFreqThreshold).cache() //过滤掉词频小于阈值的词
 
     // 获取广播词表
     val dictionary = wordsCount.collect().toMap
@@ -190,11 +193,9 @@ object WordExtractor {
       val word = wordPair._1
       val wordCoagulation = coagulation(word, totalLengthBr.value, dictBr.value)
       (word, wordCoagulation)
-    }).filter(_._1.length != wordWindow.value)
-
-
+    })
     // 计算左右字信息熵
-    val infoEntropyRDD = wordRDD.filter(_._1.length > 1)
+    val infoEntropyRDD = wordRDD.filter(_._1.length > 2)
       .map(wordPair => {
       val word = wordPair._1
       val result = infoEntropy(word, totalLengthBr.value, dictBr.value)
@@ -205,8 +206,25 @@ object WordExtractor {
       (line._1, Math.min(right, left))
     })
 
-    coagulationRDD.collect()
-    infoEntropyRDD.collect()
+    val resultRDD = coagulationRDD.join(infoEntropyRDD)
+    resultRDD.sortBy(_._2).filter(line => line._2._1 > 100 && line._2._2 > 0.015  ).foreach(println)
+    println(resultRDD.count())
+
+//    val coagWriter = new PrintWriter(new File("D:/working/wordExtract/output/coag"))
+//    coagulationRDD.sortByKey().collect().foreach(line => {
+//      val (a, b) = line
+//      coagWriter.write(s"($a, $b)\n")
+//      coagWriter.flush()
+//    })
+//    coagWriter.close()
+//
+//    val infoWriter = new PrintWriter(new File("D:/working/wordExtract/output/info"))
+//    infoEntropyRDD.sortByKey().collect().foreach(line => {
+//      val (a, b) = line
+//      infoWriter.write(s"($a, $b)\n")
+//      infoWriter.flush()
+//    })
+//    infoWriter.close()
   }
 
 }
