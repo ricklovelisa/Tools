@@ -1,11 +1,7 @@
 package tools
 
-import java.io.{File, PrintWriter}
-
 import org.apache.spark.SparkContext
-
 import scala.collection.mutable.ArrayBuffer
-import scala.io.Source
 
 /**
   * Created by QQ on 2016/6/4.
@@ -153,6 +149,9 @@ object WordExtractor {
     // 获取文本存放地址
     val path = config.getValue("wordExtract", "textPath")
 
+    // 获取输出路径
+    val outputPath = config.getValue("wordExtract", "outputPath")
+
     // 获取并行度
     val parallelism = config.getValue("wordExtract", "parallelism").toInt
 
@@ -181,6 +180,7 @@ object WordExtractor {
       .flatMap(splitWordsWithWindow(_, wordWindow.value)).map((_, 1))
       .reduceByKey(_ + _).filter(_._2 > minWordFreqThreshold).cache() //过滤掉词频小于阈值的词
 
+
     // 获取广播词表
     val dictionary = wordsCount.collect().toMap
     val dictBr = sc.broadcast(dictionary)
@@ -207,8 +207,11 @@ object WordExtractor {
     })
 
     val resultRDD = coagulationRDD.join(infoEntropyRDD)
-    resultRDD.sortBy(_._2).filter(line => line._2._1 > 100 && line._2._2 > 0.015  ).foreach(println)
-    println(resultRDD.count())
+
+    resultRDD
+      .sortBy(_._2)
+      .filter(line => line._2._1 > coagulationThreshold && line._2._2 > infoEntropyThreshold)
+      .saveAsTextFile(outputPath)
 
 //    val coagWriter = new PrintWriter(new File("D:/working/wordExtract/output/coag"))
 //    coagulationRDD.sortByKey().collect().foreach(line => {

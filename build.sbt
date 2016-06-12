@@ -1,3 +1,5 @@
+mainClass in (Compile, packageBin) := Some("tools.Extraction")
+
 name := "tools"
 
 version := "1.0"
