@@ -12,8 +12,8 @@ object Extraction {
 
     val conf = new SparkConf()
       .setAppName("WordExtraction")
-      .setMaster("local")
-      .set("spark.driver.host","192.168.2.90")
+//      .setMaster("local")
+//      .set("spark.driver.host","192.168.2.90")
 
     val sc = new SparkContext(conf)
 

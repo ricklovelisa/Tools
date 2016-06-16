@@ -1,6 +1,7 @@
 package tools
 
 import org.apache.spark.SparkContext
+
 import scala.collection.mutable.ArrayBuffer
 
 /**
@@ -32,7 +33,7 @@ object WordExtractor {
   private def splitSents(content: String): Array[String] = {
 
     if (content != null && !content.isEmpty)
-      content.split("[,.?;:\'\"，。？；：‘“、!！]").filterNot(_.length == 0)
+      content.split("[,.?;:\'\"，。？；：‘“”’、!！》《><【】\\[\\]『』{}\n\t\f\b\r ]").filterNot(_.length == 0)
     else
       Array("")
   }
@@ -69,21 +70,20 @@ object WordExtractor {
     * @param dictionary wordcount词典
     * @return 返回一个凝结度的值
     */
-  private def coagulation(word: String, textLength: Int, dictionary: Map[String, Int]): Double = {
+  private def coagulation(word: String, textLength: Double, dictionary: Map[String, Double]): Double = {
 
-    val totalWordLength = textLength.toDouble
-    var result = totalWordLength
+    var result = textLength
     if (word.length > 1) {
       for (i <- 1 until word.length) {
         val rWord = word.substring(0, i)
         val lWord = word.substring(i)
-        val pWord = dictionary(word) * totalWordLength //这里计算的时候用了化简的公式
+        val pWord = dictionary(word)  //这里计算的时候用了化简的公式
         val pRword = dictionary(rWord)
         val pLword = dictionary(lWord)
-        result = math.min(result, pWord / (pRword * pLword))
+        result = math.min(result, pWord * textLength / (pRword * pLword))
       }
     } else if (word.length == 1) {
-      result = dictionary(word) / totalWordLength
+      result = dictionary(word) / textLength
     }
 
     result
@@ -98,8 +98,8 @@ object WordExtractor {
     * @return
     */
   private def infoEntropy(word: String,
-                          textLength: Int,
-                          dictionary: Map[String, Int]): Array[(String, (String, Double))] = {
+                          textLength: Double,
+                          dictionary: Map[String, Double]): Array[(String, (String, Double))] = {
 
     val rInfoEntro = ArrayBuffer[(String, Double)]()
     val lInfoEntro = ArrayBuffer[(String, Double)]()
@@ -110,12 +110,13 @@ object WordExtractor {
       val rightWord = word.substring(i)
 
       if (leftWord.length == 1) {
-        val pLeftWord = dictionary(leftWord) / textLength.toDouble
+        val pLeftWord = dictionary(leftWord) / textLength
         val entropy = 0 - pLeftWord * Math.log(pLeftWord)
         lInfoEntro.append((rightWord, entropy))
       }
+
       if (rightWord.length == 1) {
-        val pRigthWord = dictionary(rightWord) / textLength.toDouble
+        val pRigthWord = dictionary(rightWord) / textLength
         val entropy = 0 - pRigthWord * Math.log(pRigthWord)
         rInfoEntro.append((leftWord, entropy))
       }
@@ -132,7 +133,7 @@ object WordExtractor {
     * @param threshold 阈值
     * @return 返回布尔值
     */
-  private def filterFunc(par: (String, Int), threshold: Int): Boolean = {
+  private def filterFunc(par: (String, Double), threshold: Double): Boolean = {
 
     par._1.length > 1 && par._1.length <= threshold
   }
@@ -160,24 +161,25 @@ object WordExtractor {
 
     // 分割句子
     val data = sc.textFile(path)
+      .map(_.split("\t").mkString(","))
       .map(splitSents)
-      .flatMap(_.array)
+      .flatMap(x => x)
       .repartition(parallelism)
       .map(washLines)
       .filter(_.length != 0)
 
     // 计算文本总长度
-    val totalLengthBr = sc.broadcast(data.map(_.length).reduce(_ + _))
+    val totalLengthBr = sc.broadcast(data.map(_.length.toDouble).reduce(_ + _))
 
     //最小词频阈值，最小凝结度阈值和最小信息熵阈值
-    val minWordFreqThreshold = config.getValue("wordExtract", "minWordFreqThreshold").toInt
+    val minWordFreqThreshold = config.getValue("wordExtract", "minWordFreqThreshold").toDouble
     val coagulationThreshold = config.getValue("wordExtract", "coagulationThreshold").toDouble
     val infoEntropyThreshold = config.getValue("wordExtract", "infoEntropyThreshold").toDouble
 
 
     // 计算词频(过滤掉词频过小的词片段)
     val wordsCount = data
-      .flatMap(splitWordsWithWindow(_, wordWindow.value)).map((_, 1))
+      .flatMap(splitWordsWithWindow(_, wordWindow.value)).map((_, 1.0))
       .reduceByKey(_ + _).filter(_._2 > minWordFreqThreshold).cache() //过滤掉词频小于阈值的词
 
 
@@ -194,6 +196,7 @@ object WordExtractor {
       val wordCoagulation = coagulation(word, totalLengthBr.value, dictBr.value)
       (word, wordCoagulation)
     })
+
     // 计算左右字信息熵
     val infoEntropyRDD = wordRDD.filter(_._1.length > 2)
       .map(wordPair => {
@@ -209,25 +212,10 @@ object WordExtractor {
     val resultRDD = coagulationRDD.join(infoEntropyRDD)
 
     resultRDD
-      .sortBy(_._2)
       .filter(line => line._2._1 > coagulationThreshold && line._2._2 > infoEntropyThreshold)
+      .repartition(parallelism)
+      .sortBy(_._2)
       .saveAsTextFile(outputPath)
-
-//    val coagWriter = new PrintWriter(new File("D:/working/wordExtract/output/coag"))
-//    coagulationRDD.sortByKey().collect().foreach(line => {
-//      val (a, b) = line
-//      coagWriter.write(s"($a, $b)\n")
-//      coagWriter.flush()
-//    })
-//    coagWriter.close()
-//
-//    val infoWriter = new PrintWriter(new File("D:/working/wordExtract/output/info"))
-//    infoEntropyRDD.sortByKey().collect().foreach(line => {
-//      val (a, b) = line
-//      infoWriter.write(s"($a, $b)\n")
-//      infoWriter.flush()
-//    })
-//    infoWriter.close()
   }
 
 }
