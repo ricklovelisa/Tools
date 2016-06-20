@@ -18,6 +18,8 @@ libraryDependencies += "org.json" % "json" % "20160212"
 
 libraryDependencies += "com.ibm.icu" % "icu4j" % "56.1"
 
+libraryDependencies += "redis.clients" % "jedis" % "2.8.0"
+
 assemblyMergeStrategy in assembly := {
   case PathList("org", "codehaus", xs @ _*) => MergeStrategy.last
   case PathList("org", "objectweb", xs @ _*) => MergeStrategy.last
