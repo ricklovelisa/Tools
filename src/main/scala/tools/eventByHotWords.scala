@@ -29,7 +29,7 @@ object eventByHotWords {
     val conf = new SparkConf()
       .setAppName("eventCluster")
       .setMaster("local")
-          .set("spark.driver.host","192.168.2.90")
+      .set("spark.driver.host","192.168.2.90")
 
     val sc = new SparkContext(conf)
     val config = new JsonConfig
@@ -49,6 +49,7 @@ object eventByHotWords {
     try {
       val insertPrep = mySQLconn.prepareStatement(insertSql)
       wordsList.foreach(word => {
+
         val result = grepKeyByValue(word, data)
         val stock = result.filter(_.startsWith("st_")).map(_.replace("st_", "")).mkString(",")
         val indus = result.filter(_.startsWith("in_")).map(_.replace("in_", "")).mkString(",")
@@ -66,6 +67,6 @@ object eventByHotWords {
     }
 
 
-//    sc.textFile("hdfs://222.73.57.12:9000/user/louvain/outputSupport/level_1_wordsCommunity/p*")
+//    sc.textFile("hdfs://222.73.57.12:9000/mlearning/result/fastUnfoldingOutput/level_0_vertices/p*").foreach(println)
   }
 }

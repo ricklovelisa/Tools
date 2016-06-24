@@ -2,7 +2,6 @@ package tools
 
 import org.apache.spark.{SparkConf, SparkContext}
 
-
 /**
   * Created by QQ on 2016/6/6.
   */

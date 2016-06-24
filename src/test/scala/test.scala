@@ -1,9 +1,13 @@
 import java.net.{Socket, URLDecoder}
 import java.util.regex.Pattern
 
+import com.kunyandata.nlpsuit.classification.Regular
 import com.kunyandata.nlpsuit.util.WordSegment
+import org.apache.spark.SparkConf
 import tools._
 
+import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
 import scala.xml.Elem
 
 /**
@@ -11,8 +15,9 @@ import scala.xml.Elem
   */
 object test {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
 
-
+    println("".split(",").toSeq)
+    println(Array("").contains("000001"))
   }
 }

@@ -7,6 +7,7 @@ import com.kunyandata.nlpsuit.util.{KunyanConf, TextPreprocessing}
 import scala.collection.mutable.ArrayBuffer
 
 /**
+  * 清洗电信数据中的脏数据和无效数据，并将urlcode转化为中文字符
   * Created by QQ on 2016/5/31.
   */
 object DataCleaning {

@@ -3,6 +3,7 @@ package tools
 import org.apache.spark.{SparkContext, SparkConf}
 
 /**
+  * 计算大V等级
   * Created by QQ on 2016/5/25.
   */
 object Doit {
