@@ -18,6 +18,6 @@ object test {
   def main(args: Array[String]): Unit = {
 
     println("".split(",").toSeq)
-    println(Array("").contains("000001"))
+    println(Array("k").mkString(","))
   }
 }

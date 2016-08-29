@@ -5,7 +5,6 @@ import java.util.{Date, Properties}
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
 /**
@@ -13,20 +12,66 @@ import scala.io.Source
   */
 object Relation {
 
-  def getDicts(path: String) = {
+  /**
+    * 计算相关股票，行业和板块（基于RDD）
+    * @param sc SparkContext
+    * @param cate 类别名称
+    * @param data 数据
+    * @param partition 分区数
+    * @return
+    */
+  def getRelation(sc: SparkContext, cate: String, data: Array[Map[String, Array[String]]], partition: Int) = {
 
-    val dicts = Source.fromFile(path).getLines().map(line => {
-      val temp = line.split("\t")
-      val key = temp(0)
-      val value = temp(1).split(",")
-      (key, value)
-    }).toMap
+    val dataRDD = sc.parallelize(data.map(_(cate)).flatMap(x => x).filter(_.length > 0).toSeq, partition)
 
-    dicts
+    dataRDD. map(key => {
+
+      val tmp = data.filter(_(cate).contains(key))
+
+      val result = Array("stock", "industry", "section").map(item => {
+        val resultTmp = tmp
+          .map(_(item))
+          .flatMap(x => x)
+          .filterNot(_ == key)
+          .map((_, 1))
+          .groupBy(_._1)
+          .map(line => (line._1, line._2.map(_._2).sum))
+          .toArray.sortWith(_._2 > _._2).map(_._1).take(2).mkString(",")
+        (item, resultTmp)
+      }).toMap
+
+//      println(s"$key||${result("stock")}|${result("industry")}|${result("section")}")
+      (key, result)
+    })
   }
 
-  def getRelation() = {
+  /**
+    * 计算相关股票，行业和板块
+    * @param cate 类别名称
+    * @param data 数据
+    * @return
+    */
+  def getRelation(cate: String, data: Array[Map[String, Array[String]]]) = {
 
+    data.map(_(cate)).flatMap(x => x).filter(_.length > 0).map(key => {
+
+      val tmp = data.filter(_(cate).contains(key))
+
+      val result = Array("stock", "industry", "section").map(item => {
+        val resultTmp = tmp
+          .map(_(item))
+          .flatMap(x => x)
+          .filterNot(_ == key)
+          .map((_, 1))
+          .groupBy(_._1)
+          .map(line => (line._1, line._2.map(_._2).sum))
+          .toArray.sortWith(_._2 > _._2).map(_._1).take(2).mkString(",")
+        (item, resultTmp)
+      }).toMap
+
+//      println(s"$key||${result("stock")}|${result("industry")}|${result("section")}")
+      (key, result)
+    })
   }
 
   def filterFuc(args: (String, String, String)) = {
@@ -49,7 +94,7 @@ object Relation {
     prop.setProperty("password","news")
 
     sqlContext.read
-      .jdbc("jdbc:mysql://222.73.57.12:3306/news", "news_info", "news_time", 1L, currentTimestamp, 4, prop)
+      .jdbc("jdbc:mysql://222.73.34.104:3306/news", "news_info", "news_time", 1L, currentTimestamp, 4, prop)
       .registerTempTable("tempTable")
 
     val data = sqlContext.sql(s"select * from tempTable where news_time < $currentTimestamp " +
@@ -59,62 +104,33 @@ object Relation {
 
       (row.getString(6), row.getString(7), row.getString(8))
     }).filter(filterFuc).map(row => {
-      Map("industry" -> row._1.split(",").toSeq,
-          "section" -> row._2.split(",").toSeq,
-          "stock" -> row._3.split(",").toSeq)
+      Map("industry" -> row._1.split(","),
+          "section" -> row._2.split(","),
+          "stock" -> row._3.split(","))
     }).collect()
 
 
-    val mysqlUrl = "jdbc:mysql://222.73.57.12:3306/news?user=news&password=news&useUnicode=true&characterEncoding=utf8"
+    val mysqlUrl = "jdbc:mysql://222.73.34.104:3306/news?user=news&password=news&useUnicode=true&characterEncoding=utf8"
     val mysqlConn = MySQLUtil.getConnect("com.mysql.jdbc.Driver", mysqlUrl)
 
     Array("stock", "industry", "section").foreach(cate => {
-      val result = newsRelationData.map(_(cate)).flatMap(x => x).filter(_.length > 0).map(key => {
-        val tmp = newsRelationData.filter(_(cate).contains(key))
-        val reStock = tmp
-          .map(_ ("stock"))
-          .flatMap(x => x)
-          .map((_, 1))
-          .groupBy(_._1)
-          .map(line => (line._1, line._2.map(_._2).sum))
-          .toArray.sortBy(_._2).map(_._1).take(2).mkString(",")
+      println(cate)
+      val result = getRelation(cate, newsRelationData)
 
-        val reIndustry = tmp
-          .map(_("industry"))
-          .flatMap(x => x)
-          .map((_, 1))
-          .groupBy(_._1)
-          .map(line => (line._1, line._2.map(_._2).sum))
-          .toArray.sortBy(_._2).map(_._1).take(2).mkString(",")
+      val sql = s"update ${cate}_relation set re_stock = ?, re_industry = ?, re_section = ? where $cate = ?"
+      try {
+        val prep = mysqlConn.prepareStatement(sql)
+        result.foreach(row => {
 
-        val reSection = tmp
-          .map(_("section"))
-          .flatMap(x => x)
-          .map((_, 1))
-          .groupBy(_._1)
-          .map(line => (line._1, line._2.map(_._2).sum))
-          .toArray.sortBy(_._2).map(_._1).take(2).mkString(",")
-        println(s"$reStock|$reIndustry|$reSection")
-        (key, (reStock, reIndustry, reSection))
-      })
+          prep.setString(1, row._2("stock"))
+          prep.setString(2, row._2("industry"))
+          prep.setString(3, row._2("section"))
+          prep.setString(4, row._1)
+          prep.executeUpdate()
+        })
+      }
     })
 
-
-
-
-//      val sql = s"update ${cate}_relation set re_stock = ?, re_industry = ?, re_section = ? where $cate = ?"
-//      println(sql)
-//      try {
-//        val insertPrep = mysqlConn.prepareStatement(sql)
-//        dic.keys.foreach(row => {
-//          insertPrep.setString(1, row)
-//          insertPrep.setString(2, row)
-//          insertPrep.setString(3, row)
-//          insertPrep.setString(4, row)
-//          insertPrep.executeUpdate()
-//        })
-//      }
-//    })
     mysqlConn.close()
   }
 }
