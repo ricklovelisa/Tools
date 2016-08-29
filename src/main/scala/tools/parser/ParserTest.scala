@@ -1,4 +1,4 @@
-package tools
+package tools.parser
 
 import scala.collection.immutable.HashMap
 
@@ -10,142 +10,11 @@ object ParserTest {
 
   def main(args: Array[String]) {
 
-    val s = "1:总股本小于12亿"
+    val s = "1:总股本小于12亿+1:流通比例大于3%小于2%+1:户均持股数大于2万小于6万+1:大股东减股+2:涨跌幅大于1%小于2%+2:振幅等于12%+3:资金流入大于8万"
 
-
-    println(parser(s))
+    s.split("\\+").foreach(println)
+    println(Query.parser(s))
   }
-
-  def parser (text: String) = {
-
-    val queries = text.split("\\+")
-
-    val resultTemp = queries.map(query => {
-
-      parserByType(query)
-    })
-
-    resultTemp.groupBy(_._1).map(x => (x._1, x._2.map(_._2).mkString(",")))
-  }
-
-  private def parserByType(query: String) = {
-
-    query.substring(0, 2) match {
-
-      case "1:" => rules(query.replaceAll("1:", ""), this.QUERYMAP, 1)
-      case "2:" => rules(query.replaceAll("2:", ""), this.QUERYMAP, 2)
-      case "3:" => rules(query.replaceAll("3:", ""), this.QUERYMAP, 3)
-      case "4:" => rules(query.replaceAll("4:", ""), this.QUERYMAP, 4)
-    }
-  }
-
-  private def rulesBiggerAndSmaller(query: String, code: Map[Int, Map[String, Int]], typ: Int): (Int, String)= {
-
-    // 获取该类别下的条件操作码
-    val opCode = code(typ)
-
-    // 判断query是否存在于条件模板中
-    val keyNum = opCode.getOrElse(query.replaceAll("\\d+", "X"), -1)
-
-    if (keyNum == -1) {
-
-      // 如果key为-1，则认为该query不存在条件模板库中，直接返回该query
-      (keyNum, s"查询条件不存在：$query")
-    }
-    else if (keyNum < 10000) {
-
-      // 如果keyNum小于1000，说明该条件为大于小于类型的查询条件
-      // 生成获取数字的正则
-      val regex = """\d+""".r
-      val value = regex.findAllIn(query).toArray
-
-      if (value.length == 2) {
-
-        (keyNum, value.mkString(","))
-      } else if (value.length == 1 && query.contains("大于")) {
-
-        (keyNum, s"${value(0)},MAX")
-      } else if (value.length == 1 && query.contains("小于")) {
-
-        (keyNum, s"MIN,${value(0)}")
-      } else {
-
-        (-1, "查询条件错误，请重新输入")
-      }
-    } else {
-
-      (-1, "")
-    }
-//    else if (keyNum > 10000 && keyNum < 20000) {
-//
-//      val regex = """\d+""".r
-//      val value = regex.findAllIn(query).toArray
-//
-//      keyNum match {
-//
-//        case 10001 => // 新闻趋势上涨
-//
-//          if (query.contains("以上")) {
-//
-//            (keyNum, s"${value(0).toInt + 1}")
-//          } else {
-//
-//            (keyNum, value(0))
-//          }
-//
-//        case 10002 => // 新闻趋势下跌
-//
-//          if (query.contains("以上")) {
-//
-//            (keyNum, s"${value(0).toInt + 1}")
-//          } else {
-//
-//            (keyNum, value(0))
-//          }
-//
-//        case 10003 => // 新闻情感非负面
-//
-//          if (query.contains("以上")) {
-//
-//            (keyNum, s"${value(0).toInt + 1}")
-//          } else {
-//
-//            (keyNum, value(0))
-//          }
-//
-//        case 10004 => // 新闻情感负面
-//
-//          if (query.contains("以上")) {
-//
-//            (keyNum, s"${value(0).toInt + 1}")
-//          } else {
-//
-//            (keyNum, value(0))
-//          }
-//
-//        case 10005 =>
-//
-//          if (query.contains("以上")) {
-//
-//            (keyNum, s"${value(0).toInt + 1}\t${value(1)}")
-//          } else {
-//
-//            (keyNum, s"${value(0)}\t${value(1)}")
-//          }
-//
-//        case 10006 =>
-//
-//          if (query.contains("以上")) {
-//
-//            (keyNum, s"${value(0).toInt + 1}\t${value(1)}")
-//          } else {
-//
-//            (keyNum, s"${value(0)}\t${value(1)}")
-//          }
-//      }
-//    }
-  }
-
 
   val QUERYMAP = {
 
