@@ -335,26 +335,26 @@ object Rules {
         case "盈利预增X%以上" => (keyNum, s"${value(0)},MAX")
         case "诉讼仲裁X次以上" => (keyNum, s"${value(0)},MAX")
         case "违规处罚X次以上" => (keyNum, s"${value(0)},MAX")
-        case "新闻趋势连续X天上涨" => (keyNum, s"${value(0)}\t1,1")
-        case "新闻趋势连续X天下降" => (keyNum, s"${value(0)}\t-1,-1")
-        case "新闻趋势连续X天以上上涨" => (keyNum, s"${value(0)}\t1,1")
-        case "新闻趋势连续X天以上下降" => (keyNum, s"${value(0)}\t-1,-1")
-        case "新闻情感连续X天都是非负面情绪" => (keyNum, s"${value(0)}\t0,0.5")
-        case "新闻情感连续X天都是负面情绪" => (keyNum, s"${value(0)}\t0.5,1")
-        case "新闻情感连续X天以上都是非负面情绪" => (keyNum, s"${value(0)}\t0,0.5")
-        case "新闻情感连续X天以上都是负面情绪" => (keyNum, s"${value(0)}\t0.5,1")
-        case "连续X天被X个大V看好" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
-        case "连续X天被X个大V看空" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
-        case "连续X天以上被X个大V看好" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
-        case "连续X天以上被X个大V看空" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
-        case "连续X天被X个大V以上看好" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
-        case "连续X天被X个大V以上看空" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
-        case "连续X~X天被X个大V看好" => (keyNum, s"${value(0)}\t${value(2)},${value(2)}")
-        case "连续X~X天被X个大V看空" => (keyNum, s"${value(0)}\t${value(2)},${value(2)}")
+        case "新闻趋势连续X天上涨" => (keyNum, s"${value(0)},1,1")
+        case "新闻趋势连续X天下降" => (keyNum, s"${value(0)},-1,-1")
+        case "新闻趋势连续X天以上上涨" => (keyNum, s"${value(0)},1,1")
+        case "新闻趋势连续X天以上下降" => (keyNum, s"${value(0)},-1,-1")
+        case "新闻情感连续X天都是非负面情绪" => (keyNum, s"${value(0)},0,0.5")
+        case "新闻情感连续X天都是负面情绪" => (keyNum, s"${value(0)},0.5,1")
+        case "新闻情感连续X天以上都是非负面情绪" => (keyNum, s"${value(0)},0,0.5")
+        case "新闻情感连续X天以上都是负面情绪" => (keyNum, s"${value(0)},0.5,1")
+        case "连续X天被X个大V看好" => (keyNum, s"${value(0)},${value(1)},${value(1)}")
+        case "连续X天被X个大V看空" => (keyNum, s"${value(0)},${value(1)},${value(1)}")
+        case "连续X天以上被X个大V看好" => (keyNum, s"${value(0)},${value(1)},${value(1)}")
+        case "连续X天以上被X个大V看空" => (keyNum, s"${value(0)},${value(1)},${value(1)}")
+        case "连续X天被X个大V以上看好" => (keyNum, s"${value(0)},${value(1)},${value(1)}")
+        case "连续X天被X个大V以上看空" => (keyNum, s"${value(0)},${value(1)},${value(1)}")
+        case "连续X~X天被X个大V看好" => (keyNum, s"${value(0)},${value(2)},${value(2)}")
+        case "连续X~X天被X个大V看空" => (keyNum, s"${value(0)},${value(2)},${value(2)}")
         case "连续X天被X~X个大V看好" =>
           if (value(1) < value(2)) {
 
-            (keyNum, s"${value(0)}\t${value(1)},${value(2)}")
+            (keyNum, s"${value(0)},${value(1)},${value(2)}")
           } else {
 
             (-1, s"查询条件错误：$query")
@@ -363,17 +363,17 @@ object Rules {
         case "连续X天被X~X个大V看空" =>
           if (value(1) < value(2)) {
 
-            (keyNum, s"${value(0)}\t${value(1)},${value(2)}")
+            (keyNum, s"${value(0)},${value(1)},${value(2)}")
           } else {
 
             (-1, s"查询条件错误：$query")
           }
-        case "查看热度连续X天上涨超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
-        case "查看热度连续X天出现在topX" => (keyNum, s"${value(0)}\t1,${value(1)}")
-        case "查看热度连续X天以上上涨超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
-        case "查看热度连续X天以上出现在topX" => (keyNum, s"${value(0)}\t1,${value(1)}")
-        case "查看热度连续X天超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
-        case "查看热度连续X天以上超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
+        case "查看热度连续X天上涨超过X" => (keyNum, s"${value(0)},${value(1)},MAX")
+        case "查看热度连续X天出现在topX" => (keyNum, s"${value(0)},1,${value(1)}")
+        case "查看热度连续X天以上上涨超过X" => (keyNum, s"${value(0)},${value(1)},MAX")
+        case "查看热度连续X天以上出现在topX" => (keyNum, s"${value(0)},1,${value(1)}")
+        case "查看热度连续X天超过X" => (keyNum, s"${value(0)},${value(1)},MAX")
+        case "查看热度连续X天以上超过X" => (keyNum, s"${value(0)},${value(1)},MAX")
         case _ => (-1, s"查询条件错误：$query")
       }
 
