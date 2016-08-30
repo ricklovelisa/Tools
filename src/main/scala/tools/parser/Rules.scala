@@ -7,6 +7,7 @@ import scala.collection.immutable.HashMap
   */
 object Rules {
 
+  // 查询语句模板和对应的操作码
   val QUERYMAP = {
 
     HashMap(
@@ -206,6 +207,14 @@ object Rules {
         ("查看热度连续X天以上超过X", 10009))))
   }
 
+  /**
+    * 判断语句中的大于小于数值范围
+    * @param query 查询条件
+    * @param typ 查询条件类型
+    * @return 返回语句对应的操作码和条件
+    * @author qiuqiu
+    * @note rowNum:24
+    */
   def biggerAndSmaller(query: String, typ: Int): (Int, String) = {
 
     // 获取该类别下的条件操作码
@@ -248,11 +257,68 @@ object Rules {
     }
   }
 
+  /**
+    * 判断查询条件中的布尔类型
+    * @param query 查询条件
+    * @param typ 查询条件类型
+    * @return 返回语句对应的操作码和条件
+    * @author qiuqiu
+    * @note rowNum:24
+    */
   def isOrNot(query: String, typ: Int): (Int, String) = {
 
     val opCode = this.QUERYMAP(typ)
+    val regex = """\d+""".r
+    val value = regex.findAllIn(query).toArray
 
-    val keyNum = opCode.getOrElse(query, -1)
+    if (value.length == 0) {
+      val keyNum = opCode.getOrElse(query, -1)
+
+      if (keyNum == -1) {
+
+        // 如果key为-1，则认为该query不存在条件模板库中，直接返回该query
+        (keyNum, s"查询条件错误：$query")
+      }
+      else if (typ == 4) {
+
+        (40002, query)
+      }
+      else if (typ == 1) {
+
+        keyNum match {
+
+          case 40001 => (40001, query)
+          case _ => (-1, s"查询条件错误：$query")
+        }
+      } else {
+
+        (0, "")
+      }
+    } else {
+
+      (0, "")
+    }
+
+  }
+
+  /**
+    * 判断查询条件中的连续型时间条件
+    * @param query 查询条件
+    * @param typ 查询条件的类型
+    * @return 返回语句对应的操作码和条件
+    * @author qiuqiu
+    * @note rowNum:57
+    */
+  def continuous(query: String, typ: Int): (Int, String) = {
+
+    val opCode = this.QUERYMAP(typ)
+
+    val queryTemp = query.replaceAll("\\d+", "X")
+    val regex = """\d+""".r
+    val value = regex.findAllIn(query).toArray
+
+    // 获取具体的语句的操作码
+    val keyNum = opCode.getOrElse(queryTemp, -1)
 
     if (keyNum == -1) {
 
@@ -261,80 +327,59 @@ object Rules {
     }
     else if (typ == 4) {
 
-      (40002, query)
-    }
-    else if (typ == 1) {
+      queryTemp match {
 
-      keyNum match {
+        case "盈利预增X%" => (keyNum, s"${value(0)},${value(0)}")
+        case "诉讼仲裁X次" => (keyNum, s"${value(0)},${value(0)}")
+        case "违规处罚X次" => (keyNum, s"${value(0)},${value(0)}")
+        case "盈利预增X%以上" => (keyNum, s"${value(0)},MAX")
+        case "诉讼仲裁X次以上" => (keyNum, s"${value(0)},MAX")
+        case "违规处罚X次以上" => (keyNum, s"${value(0)},MAX")
+        case "新闻趋势连续X天上涨" => (keyNum, s"${value(0)}\t1,1")
+        case "新闻趋势连续X天下降" => (keyNum, s"${value(0)}\t-1,-1")
+        case "新闻趋势连续X天以上上涨" => (keyNum, s"${value(0)}\t1,1")
+        case "新闻趋势连续X天以上下降" => (keyNum, s"${value(0)}\t-1,-1")
+        case "新闻情感连续X天都是非负面情绪" => (keyNum, s"${value(0)}\t0,0.5")
+        case "新闻情感连续X天都是负面情绪" => (keyNum, s"${value(0)}\t0.5,1")
+        case "新闻情感连续X天以上都是非负面情绪" => (keyNum, s"${value(0)}\t0,0.5")
+        case "新闻情感连续X天以上都是负面情绪" => (keyNum, s"${value(0)}\t0.5,1")
+        case "连续X天被X个大V看好" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
+        case "连续X天被X个大V看空" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
+        case "连续X天以上被X个大V看好" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
+        case "连续X天以上被X个大V看空" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
+        case "连续X天被X个大V以上看好" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
+        case "连续X天被X个大V以上看空" => (keyNum, s"${value(0)}\t${value(1)},${value(1)}")
+        case "连续X~X天被X个大V看好" => (keyNum, s"${value(0)}\t${value(2)},${value(2)}")
+        case "连续X~X天被X个大V看空" => (keyNum, s"${value(0)}\t${value(2)},${value(2)}")
+        case "连续X天被X~X个大V看好" =>
+          if (value(1) < value(2)) {
 
-        case 40001 => (40001, query)
+            (keyNum, s"${value(0)}\t${value(1)},${value(2)}")
+          } else {
+
+            (-1, s"查询条件错误：$query")
+          }
+
+        case "连续X天被X~X个大V看空" =>
+          if (value(1) < value(2)) {
+
+            (keyNum, s"${value(0)}\t${value(1)},${value(2)}")
+          } else {
+
+            (-1, s"查询条件错误：$query")
+          }
+        case "查看热度连续X天上涨超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
+        case "查看热度连续X天出现在topX" => (keyNum, s"${value(0)}\t1,${value(1)}")
+        case "查看热度连续X天以上上涨超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
+        case "查看热度连续X天以上出现在topX" => (keyNum, s"${value(0)}\t1,${value(1)}")
+        case "查看热度连续X天超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
+        case "查看热度连续X天以上超过X" => (keyNum, s"${value(0)}\t${value(1)},MAX")
         case _ => (-1, s"查询条件错误：$query")
       }
+
     } else {
 
-      (-1, s"查询条件错误：$query")
+      (0, "")
     }
   }
-
-//  def continuous(query: String, typ: Int): (Int, String) = {
-//
-//    val opCode = this.QUERYMAP(typ)
-//
-//    val keyNum = opCode.getOrElse(query, -1)
-//
-//    if (keyNum == -1) {
-//
-//      // 如果key为-1，则认为该query不存在条件模板库中，直接返回该query
-//      (keyNum, s"查询条件错误：$query")
-//    }
-//    else if (typ == 4) {
-//
-//      val regex = """\d+""".r
-//      val value = regex.findAllIn(query).toArray
-//
-//      if (query.contains("以上")) {
-//        keyNum match {
-//
-//          case 10001 => if (value.length == 1) {
-//            (keyNum, s"${value(0).toInt + 1}")
-//          } else {
-//            (-1,s"查询条件错误：$query")
-//          }
-//          case 10002 => if (value.length == 1) {
-//            (keyNum, s"${value(0).toInt + 1}")
-//          } else {
-//            (-1,s"查询条件错误：$query")
-//          }
-//          case 10003 => if (value.length == 1) {
-//            (keyNum, s"${value(0).toInt + 1}")
-//          } else {
-//            (-1,s"查询条件错误：$query")
-//          }
-//          case 10004 =>
-//          case 10005 =>
-//          case 10006 =>
-//          case 10007 =>
-//          case 10008 =>
-//          case 10009 =>
-//          case _ =>
-//        }
-//      } else {
-//
-//        keyNum match {
-//
-//          case 10001 =>
-//          case 10002 =>
-//          case 10003 =>
-//          case 10004 =>
-//          case 10005 =>
-//          case 10006 =>
-//          case 10007 =>
-//          case 10008 =>
-//          case 10009 =>
-//          case _ =>
-//        }
-//      }
-//
-//    }
-//  }
 }
