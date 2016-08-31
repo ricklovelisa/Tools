@@ -10,7 +10,7 @@ object Query {
     * @param query 查询条件
     * @return
     */
-  def parser (query: String) = {
+  def parser (query: String): Map[Int, String] = {
 
     val queries = query.split("\\+")
 
@@ -19,7 +19,7 @@ object Query {
       parserByType(query)
     })
 
-    resultTemp.mkString(",")
+    resultTemp.toMap
   }
 
   /**
