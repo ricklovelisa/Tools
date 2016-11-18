@@ -8,9 +8,15 @@ scalaVersion := "2.10.4"
 
 resolvers += "Kunyan Repo" at "http://61.147.114.67:8081/nexus/content/groups/public/"
 
+resolvers += "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"
+
 libraryDependencies += "com.kunyan" % "nlpsuit-package" % "0.2.9.0"
 
-libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.5.2"
+//libraryDependencies += "org.apache.spark" % "spark-mllib_2.10" % "1.5.2"
+
+libraryDependencies += "org.scalanlp" %% "breeze" % "0.12"
+
+libraryDependencies += "org.scalanlp" %% "breeze-natives" % "0.12"
 
 libraryDependencies += "mysql" % "mysql-connector-java" % "5.1.38"
 
